@@ -1,4 +1,6 @@
 import sys
+import importlib
+from sut import standard_deviation
 
 sut_filename = 'sut.py'
 if(len(sys.argv) >= 2):
@@ -7,6 +9,8 @@ if(len(sys.argv) >= 2):
 mutant_list_filename = 'mutant_list.txt'
 
 test_cases_filename = 'test_vectors.csv'
+
+list_of_mutant_files = []
 
 def generate_mutant_list():
     #open the software under test
@@ -96,6 +100,7 @@ def generate_mutated_code():
                 #we have a complete entry
                 output_filename = 'Mutation ' + str(mutant_number)
                 output_filename += '.' + sut_file_extension
+                list_of_mutant_files.append(output_filename)
 
                 with open(sut_filename) as sut, open(output_filename, 'a+') as output_file:
                     if mutant_line_number != 0:
@@ -137,6 +142,19 @@ def generate_mutated_code():
                 lines_of_entry_parsed = 0
 
 
+def compare_mutant_code(*args):
+
+	for file in list_of_mutant_files:
+		file = file.split(".")[0]
+		mutant_file = importlib.import_module(file)
+		correct_result = standard_deviation(*args)
+		mutant_result = mutant_file.standard_deviation(*args)
+		if correct_result == mutant_result:
+			print("true") 
+		else:
+			print("false")
+	
 
 generate_mutant_list()
 generate_mutated_code()
+compare_mutant_code([1,2,3,4])
