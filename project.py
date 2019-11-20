@@ -27,7 +27,6 @@ def compare_mutant_code(num, test_vector = []):
         mutant_file = importlib.import_module(file)
         correct_result = sut.standard_deviation(test_vector)
         mutant_result = mutant_file.standard_deviation(test_vector)
-        print(str(correct_result) + " " + str(mutant_result))
         return correct_result == mutant_result
 
 def generate_mutant_list():
@@ -162,11 +161,17 @@ def generate_mutated_code():
 def sequential_test():
     num_pass = 0
     for test in edge_cases:
-        if compare_mutant_code(0, test):
-            num_pass += 1
+        try:
+            if not compare_mutant_code(0, test):
+                num_pass += 1
+        except:
+            pass
     for test in test_cases:
-        if compare_mutant_code(0, test):
-            num_pass += 1
+        try:
+            if not compare_mutant_code(0, test):
+                num_pass += 1
+        except:
+            pass
     
     pass_pct = float(num_pass) / float(len(edge_cases) + len(test_cases)) * 100
     print(str(pass_pct) + " percent of mutants were killed.")
@@ -212,4 +217,4 @@ def parallel_test():
 generate_mutant_list()
 generate_mutated_code()
 sequential_test()
-#parallel_test()
+parallel_test()
