@@ -6,7 +6,7 @@ def generate_vectors():
     out = random.sample(range(-100, 100), random_range)
     out.append(round(random.uniform(-100,100), 2))
 
-    print(out)
+    return out
 
 
 generate_vectors()
