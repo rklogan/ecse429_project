@@ -1,28 +1,32 @@
 import sys
 import importlib
-from sut import standard_deviation
 import threading
 import generate_test_vectors
 import numpy as np
 import importlib
 import sut
 
+#get CLAs
 sut_filename = 'sut.py'
+num_threads = 3
 if(len(sys.argv) >= 2):
-    filename = sys.argv[1]
+    num_threads = int(sys.argv[1])
+if(len(sys.argv) >= 3):
+    filename = sys.argv[2]
 
 mutant_list_filename = 'mutant_list.txt'
-
 test_cases_filename = 'test_vectors.csv'
-
 list_of_mutant_files = []
+dead_mutants = []
 
+#generate test data
 edge_cases = [" ", [2], [], "hello", "stuff", [], "&", "", [1], [10]]
 num_cases = 100
 test_cases = []
 for i in range(num_cases):
     test_cases.append(generate_test_vectors.generate_vectors())
 
+#function that generate all the mutants of the sut
 def generate_mutant_list():
     #open the software under test
     sut = open(sut_filename).readlines()
@@ -71,6 +75,7 @@ def generate_mutant_list():
         for i in range(4):
             mutant_file.write('Number of \'' + symbols[i] +'\' mutations: ' + str(mutation_counts[i]) + '\n')
 
+#converts a list of mutants into python scripts
 def generate_mutated_code():
     #some constants used to trim mutant list entries
     chars_to_split_line_2 = len('Originally: ')
@@ -152,88 +157,92 @@ def generate_mutated_code():
                 mutation_type = ""
                 lines_of_entry_parsed = 0
 
-def sequential_test():
-    num_pass = 0
-    for test in edge_cases:
-        try:
-            if not compare_mutant_code(0, test):
-                num_pass += 1
-        except:
-            pass
-    for test in test_cases:
-        try:
-            if not compare_mutant_code(0, test):
-                num_pass += 1
-        except:
-            pass
+#returns true if the given mutant object is killed by the vector
+def attempt_to_kill(mutant, vector):
+    #check exception cases
+    correct_threw = False
+    mutant_threw = False
+    try:
+        sut.standard_deviation(vector)
+    except Exception:
+        correct_threw = True
+
+    try:
+        mutant.standard_deviation(vector)
+    except Exception:
+        mutant_threw = True
+
+    if(correct_threw and mutant_threw):
+        return False
+    elif(correct_threw != mutant_threw):
+        return True
+    else:
+        #otherwise compute the output
+        correct = sut.standard_deviation(vector)
+        mutant_value = mutant.standard_deviation(vector)
+        if(correct == mutant_value):
+            return False
+        return True
+
+#this functions tests all the test vectors on the given mutant
+def test_mutant(num, mutant_filename):
+    mutant_name = mutant_filename.split('.')[0]
+    mutant = importlib.import_module(mutant_name)
+
+    #run the tests
+    killers = []
+    for vector in edge_cases:
+        if attempt_to_kill(mutant, vector):
+            killers.append(vector)
+
+    for vector in test_cases:
+        if attempt_to_kill(mutant, vector):
+            killers.append(vector)
+
+    #output the data
+    with open(mutant_list_filename, 'a+') as mutant_file:
+        if killers != []:
+            for killer in killers:
+                mutant_file.write(mutant_name + ' was killed by: ' + str(killer) + '\n')
+        else:
+            mutant_file.write(mutant_name + ' was not killed.')
+        print(mutant_name + ' was killed by: ' + str(len(killers)) + ' vectors')
     
-    pass_pct = float(num_pass) / float(len(edge_cases) + len(test_cases)) * 100
-    print(str(pass_pct) + " percent of mutants were killed.")
+    #add the mutant to the list in RAM
+    if(len(killers) > 0):
+        dead_mutants.append(mutant_name)    
 
+#test every mutant sequentially
+def sequential_test():
+    dead_mutants = []
+    for mutant_file in list_of_mutant_files:
+        test_mutant(0, mutant_file)
+
+#test in parallel
 def parallel_test():
-    num_threads = 3
+    dead_mutants = []
+
+    i = 0
     threads = []
-
-    i = 0
-    while i < len(edge_cases):
-        #spawn thread with callback
+    while i < len(list_of_mutant_files):
         for j in range(num_threads):
-            if i + j >= len(edge_cases):
+            if i+j >= len(list_of_mutant_files):
                 break
-            t = threading.Thread(target=compare_mutant_code, args = (0,), kwargs={"test_vector":edge_cases[i+j]})
+            t = threading.Thread(target=test_mutant, args=(1,), kwargs={'mutant_filename':list_of_mutant_files[i+j]})
             threads.append(t)
             t.start()
 
-        #wait for threads to finish
-        for t in threads:
-            t.join()
-            
-        i += j
-
-
-    i = 0
-    while i < len(test_cases):
-        #spawn thread with callback
-        for j in range(num_threads):
-            if i + j >= len(test_cases):
-                break
-            
-            t = threading.Thread(target=compare_mutant_code, args = (0,), kwargs={"test_vector":test_cases})
-            threads.append(t)
-            t.start()
-
-=======
-        #wait for threads to finish
-        for t in threads:
-            t.join()
-        i += j
-
-def compare_mutant_code(test_vector):
-
-	for file in list_of_mutant_files:
-		file = file.split(".")[0]
-		mutant_file = importlib.import_module(file)
-		try:
-			correct_result = standard_deviation(*args)
-		
-		except Exception as a1:
-			
-			try:
-				mutant_result = mutant_file.standard_deviation(*args)
-			
-			except Exception as a2:
-				type(a1) is type(a2) and a1.args == a2.args 
-		
-		else:	
-			mutant_result = mutant_file.standard_deviation(*args)
-			if correct_result == mutant_result:
-				return true 
-			else:
-				with open(mutant_list_filename) as mutant_file:
-					mutant_file.write(file + " was killed " '\n')
-			return false
+        for k in threads:
+            k.join()
+        i += num_threads
 
 generate_mutant_list()
 generate_mutated_code()
-sequential_test()
+#sequential_test()
 parallel_test()
+
+#calculate coverage
+coverage = float(len(dead_mutants)) / float(len(list_of_mutant_files)) * 100
+print(str(coverage) + '% Mutant Coverage')
+open(mutant_list_filename, 'a+').write(str(coverage) + '% Mutant Coverage')
+            
