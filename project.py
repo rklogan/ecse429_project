@@ -1,6 +1,11 @@
 import sys
 import importlib
 from sut import standard_deviation
+import threading
+import generate_test_vectors
+import numpy as np
+import importlib
+import sut
 
 sut_filename = 'sut.py'
 if(len(sys.argv) >= 2):
@@ -11,6 +16,12 @@ mutant_list_filename = 'mutant_list.txt'
 test_cases_filename = 'test_vectors.csv'
 
 list_of_mutant_files = []
+
+edge_cases = [" ", [2], [], "hello", "stuff", [], "&", "", [1], [10]]
+num_cases = 100
+test_cases = []
+for i in range(num_cases):
+    test_cases.append(generate_test_vectors.generate_vectors())
 
 def generate_mutant_list():
     #open the software under test
@@ -23,7 +34,7 @@ def generate_mutant_list():
     mutation_counts = [0,0,0,0]
     symbols = ['+','-','*','/']
 
-    with open(mutant_list_filename, 'a+') as mutant_file:
+    with open(mutant_list_filename, 'w+') as mutant_file:
         #iterate over each line
         for i in range(len(sut)):
             line = sut[i]
@@ -102,7 +113,7 @@ def generate_mutated_code():
                 output_filename += '.' + sut_file_extension
                 list_of_mutant_files.append(output_filename)
 
-                with open(sut_filename) as sut, open(output_filename, 'a+') as output_file:
+                with open(sut_filename) as sut, open(output_filename, 'w+') as output_file:
                     if mutant_line_number != 0:
                         #write the lines that come before the mutant to the output file
                         header = [next(sut) for i in range(mutant_line_number)]
@@ -141,6 +152,61 @@ def generate_mutated_code():
                 mutation_type = ""
                 lines_of_entry_parsed = 0
 
+def sequential_test():
+    num_pass = 0
+    for test in edge_cases:
+        try:
+            if not compare_mutant_code(0, test):
+                num_pass += 1
+        except:
+            pass
+    for test in test_cases:
+        try:
+            if not compare_mutant_code(0, test):
+                num_pass += 1
+        except:
+            pass
+    
+    pass_pct = float(num_pass) / float(len(edge_cases) + len(test_cases)) * 100
+    print(str(pass_pct) + " percent of mutants were killed.")
+
+def parallel_test():
+    num_threads = 3
+    threads = []
+
+    i = 0
+    while i < len(edge_cases):
+        #spawn thread with callback
+        for j in range(num_threads):
+            if i + j >= len(edge_cases):
+                break
+            t = threading.Thread(target=compare_mutant_code, args = (0,), kwargs={"test_vector":edge_cases[i+j]})
+            threads.append(t)
+            t.start()
+
+        #wait for threads to finish
+        for t in threads:
+            t.join()
+            
+        i += j
+
+
+    i = 0
+    while i < len(test_cases):
+        #spawn thread with callback
+        for j in range(num_threads):
+            if i + j >= len(test_cases):
+                break
+            
+            t = threading.Thread(target=compare_mutant_code, args = (0,), kwargs={"test_vector":test_cases})
+            threads.append(t)
+            t.start()
+
+=======
+        #wait for threads to finish
+        for t in threads:
+            t.join()
+        i += j
 
 def compare_mutant_code(test_vector):
 
@@ -167,8 +233,7 @@ def compare_mutant_code(test_vector):
 					mutant_file.write(file + " was killed " '\n')
 			return false
 
-	
-
 generate_mutant_list()
 generate_mutated_code()
-compare_mutant_code([1,2,3,4])
+sequential_test()
+parallel_test()
