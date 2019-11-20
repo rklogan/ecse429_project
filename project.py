@@ -1,4 +1,5 @@
 import sys
+import threading
 
 sut_filename = 'sut.py'
 if(len(sys.argv) >= 2):
@@ -136,7 +137,37 @@ def generate_mutated_code():
                 mutation_type = ""
                 lines_of_entry_parsed = 0
 
+def parallel_test():
+    num_threads = 3
+    threads = []
 
+    i = 0
+    while i < len(edge_cases):
+        #spawn thread with callback
+        for j in range(num_threads):
+            t = threading.Thread(target=compare_mutant_code, args=edge_cases[i+j])
+            threads.append(t)
+            t.start()
+
+        #wait for threads to finish
+        for t in threads:
+            t.join()
+            
+        i += j
+
+    i = 0
+    while i < len(test_vectors):
+        #spawn thread with callback
+        for j in range(num_threads):
+            t = threading.Thread(target=compare_mutant_code, args=test_vector[i+j])
+            threads.append(t)
+            t.start()
+
+        #wait for threads to finish
+        for t in threads:
+            t.join()
+        i += j
+    
 
 generate_mutant_list()
 generate_mutated_code()
