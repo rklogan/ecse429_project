@@ -1,4 +1,6 @@
 import sys
+import importlib
+from sut import standard_deviation
 import threading
 import generate_test_vectors
 import numpy as np
@@ -20,14 +22,6 @@ num_cases = 100
 test_cases = []
 for i in range(num_cases):
     test_cases.append(generate_test_vectors.generate_vectors())
-
-def compare_mutant_code(num, test_vector = []):
-    for file in list_of_mutant_files:
-        file = file.split('.')[0]
-        mutant_file = importlib.import_module(file)
-        correct_result = sut.standard_deviation(test_vector)
-        mutant_result = mutant_file.standard_deviation(test_vector)
-        return correct_result == mutant_result
 
 def generate_mutant_list():
     #open the software under test
@@ -208,11 +202,36 @@ def parallel_test():
             threads.append(t)
             t.start()
 
+=======
         #wait for threads to finish
         for t in threads:
             t.join()
         i += j
-    
+
+def compare_mutant_code(test_vector):
+
+	for file in list_of_mutant_files:
+		file = file.split(".")[0]
+		mutant_file = importlib.import_module(file)
+		try:
+			correct_result = standard_deviation(*args)
+		
+		except Exception as a1:
+			
+			try:
+				mutant_result = mutant_file.standard_deviation(*args)
+			
+			except Exception as a2:
+				type(a1) is type(a2) and a1.args == a2.args 
+		
+		else:	
+			mutant_result = mutant_file.standard_deviation(*args)
+			if correct_result == mutant_result:
+				return true 
+			else:
+				with open(mutant_list_filename) as mutant_file:
+					mutant_file.write(file + " was killed " '\n')
+			return false
 
 generate_mutant_list()
 generate_mutated_code()
