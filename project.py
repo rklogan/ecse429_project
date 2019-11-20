@@ -150,9 +150,9 @@ def compare_mutant_code(*args):
 		correct_result = standard_deviation(*args)
 		mutant_result = mutant_file.standard_deviation(*args)
 		if correct_result == mutant_result:
-			print("true") 
+			return true 
 		else:
-			print("false")
+			return false
 	
 
 generate_mutant_list()
