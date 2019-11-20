@@ -6,23 +6,27 @@ import numpy as np
 import importlib
 import sut
 
+#get CLAs
 sut_filename = 'sut.py'
+num_threads = 3
 if(len(sys.argv) >= 2):
-    filename = sys.argv[1]
+    num_threads = int(sys.argv[1])
+if(len(sys.argv) >= 3):
+    filename = sys.argv[2]
 
 mutant_list_filename = 'mutant_list.txt'
-
 test_cases_filename = 'test_vectors.csv'
-
 list_of_mutant_files = []
-pooopooooopoooo
+dead_mutants = []
 
+#generate test data
 edge_cases = [" ", [2], [], "hello", "stuff", [], "&", "", [1], [10]]
 num_cases = 100
 test_cases = []
 for i in range(num_cases):
     test_cases.append(generate_test_vectors.generate_vectors())
 
+#function that generate all the mutants of the sut
 def generate_mutant_list():
     #open the software under test
     sut = open(sut_filename).readlines()
@@ -71,6 +75,7 @@ def generate_mutant_list():
         for i in range(4):
             mutant_file.write('Number of \'' + symbols[i] +'\' mutations: ' + str(mutation_counts[i]) + '\n')
 
+#converts a list of mutants into python scripts
 def generate_mutated_code():
     #some constants used to trim mutant list entries
     chars_to_split_line_2 = len('Originally: ')
@@ -152,98 +157,92 @@ def generate_mutated_code():
                 mutation_type = ""
                 lines_of_entry_parsed = 0
 
-def sequential_test():
-    num_pass = 0
-    for test in edge_cases:
-        if compare_mutant_code(0, test):
-            num_pass += 1
-    for test in test_cases:
-        if compare_mutant_code(0, test):
-            num_pass += 1
-    
-    pass_pct = float(num_pass) / float(len(edge_cases) + len(test_cases)) * 100
-    print(str(pass_pct) + " percent of mutants were killed.")
+#returns true if the given mutant object is killed by the vector
+def attempt_to_kill(mutant, vector):
+    #check exception cases
+    correct_threw = False
+    mutant_threw = False
+    try:
+        sut.standard_deviation(vector)
+    except Exception:
+        correct_threw = True
 
-def parallel_test():
-    num_threads = 3
-    threads = []
+    try:
+        mutant.standard_deviation(vector)
+    except Exception:
+        mutant_threw = True
 
-    i = 0
-    while i < len(edge_cases):
-        #spawn thread with callback
-        for j in range(num_threads):
-            if i + j >= len(edge_cases):
-                break
-            t = threading.Thread(target=compare_mutant_code, args = (0,), kwargs={"test_vector":edge_cases[i+j]})
-            threads.append(t)
-            t.start()
+    if(correct_threw and mutant_threw):
+        return False
+    elif(correct_threw != mutant_threw):
+        return True
+    else:
+        #otherwise compute the output
+        correct = sut.standard_deviation(vector)
+        mutant_value = mutant.standard_deviation(vector)
+        if(correct == mutant_value):
+            return False
+        return True
 
-        #wait for threads to finish
-        for t in threads:
-            t.join()
-            
-        i += j
+#this functions tests all the test vectors on the given mutant
+def test_mutant(num, mutant_filename):
+    mutant_name = mutant_filename.split('.')[0]
+    mutant = importlib.import_module(mutant_name)
 
+    #run the tests
+    killers = []
+    for vector in edge_cases:
+        if attempt_to_kill(mutant, vector):
+            killers.append(vector)
 
-    i = 0
-    while i < len(test_cases):
-        #spawn thread with callback
-        for j in range(num_threads):
-            if i + j >= len(test_cases):
-                break
-            
-            t = threading.Thread(target=compare_mutant_code, args = (0,), kwargs={"test_vector":test_cases})
-            threads.append(t)
-            t.start()
+    for vector in test_cases:
+        if attempt_to_kill(mutant, vector):
+            killers.append(vector)
 
-        #wait for threads to finish
-        for t in threads:
-            t.join()
-        i += j
-
-def compare_mutant_code(num,test_vector):
-    mutant_was_killed = False
-    for file in list_of_mutant_files:
-        file = file.split('.')[0]
-        mutant_file = importlib.import_module(file)
-        try:
-            correct_result = sut.standard_deviation(test_vector)
-        except Exception as e1:
-            try:
-                mutant_result = mutant_file.standard_deviation(test_vector)
-            except Exception as e2:
-                print('double exception')
-                print(test_vector)
-                print()
-                #pass
-                #return (type(e1) is type(e2) and e1.args == e2.args)
+    #output the data
+    with open(mutant_list_filename, 'a+') as mutant_file:
+        if killers != []:
+            for killer in killers:
+                mutant_file.write(mutant_name + ' was killed by: ' + str(killer) + '\n')
         else:
-            try:
-                mutant_result = mutant_file.standard_deviation(test_vector)
-            except:
-                if(num == 0):
-                    with open(mutant_list_filename, 'a+') as mutant_file:
-                        mutant_file.write(file + " was killed " '\n')
-                    mutant_was_killed = True
-            
-            if(abs(correct_result - mutant_result) > 0.0000001):
-                if(num == 0):
-                    with open(mutant_list_filename, 'a+') as mutant_file:
-                        mutant_file.write(file + " was killed " '\n')
-                mutant_was_killed = True
-            else:
-                print('equal')
-                print(correct_result)
-                print(mutant_result)
-                print(test_vector)
-                print(file)
-                print()
-    return mutant_was_killed
+            mutant_file.write(mutant_name + ' was not killed.')
+        print(mutant_name + ' was killed by: ' + str(len(killers)) + ' vectors')
+    
+    #add the mutant to the list in RAM
+    if(len(killers) > 0):
+        dead_mutants.append(mutant_name)    
 
+#test every mutant sequentially
+def sequential_test():
+    dead_mutants = []
+    for mutant_file in list_of_mutant_files:
+        test_mutant(0, mutant_file)
+
+#test in parallel
+def parallel_test():
+    dead_mutants = []
+
+    i = 0
+    threads = []
+    while i < len(list_of_mutant_files):
+        for j in range(num_threads):
+            if i+j >= len(list_of_mutant_files):
+                break
+            t = threading.Thread(target=test_mutant, args=(1,), kwargs={'mutant_filename':list_of_mutant_files[i+j]})
+            threads.append(t)
+            t.start()
+
+        for k in threads:
+            k.join()
+        i += num_threads
 
 generate_mutant_list()
 generate_mutated_code()
-
-compare_mutant_code(0, [40, 31, 54, 75, 11, -9, 20, 53.73])
 #sequential_test()
-#parallel_test()
+parallel_test()
+
+#calculate coverage
+coverage = float(len(dead_mutants)) / float(len(list_of_mutant_files)) * 100
+print(str(coverage) + '% Mutant Coverage')
+open(mutant_list_filename, 'a+').write(str(coverage) + '% Mutant Coverage')
+            
