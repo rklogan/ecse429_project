@@ -11,9 +11,13 @@ mutant_list_filename = 'mutant_list.txt'
 test_cases_filename = 'test_vectors.csv'
 
 edge_cases = [" ", [2], [], "hello", "stuff", [], "&", "", [1], [10]]
-test_cases = generate_test_vectors.generate_vectors()
-def compare_mutant_code():
-    pass
+num_cases = 100
+test_cases = []
+for i in range(num_cases):
+    test_cases.append(generate_test_vectors.generate_vectors())
+
+def compare_mutant_code(args = []):
+    return True
 
 def generate_mutant_list():
     #open the software under test
@@ -153,7 +157,7 @@ def sequential_test():
             num_pass += 1
     
     pass_pct = float(num_pass) / float(len(edge_cases) + len(test_cases)) * 100
-    print(str(pass_pct) + "percent of mutants were killed.")
+    print(str(pass_pct) + " percent of mutants were killed.")
 
 def parallel_test():
     num_threads = 3
@@ -163,6 +167,8 @@ def parallel_test():
     while i < len(edge_cases):
         #spawn thread with callback
         for j in range(num_threads):
+            if i + j >= len(edge_cases):
+                break
             t = threading.Thread(target=compare_mutant_code, args=edge_cases[i+j])
             threads.append(t)
             t.start()
@@ -173,11 +179,14 @@ def parallel_test():
             
         i += j
 
+
     i = 0
-    while i < len(test_vectors):
+    while i < len(test_cases):
         #spawn thread with callback
         for j in range(num_threads):
-            t = threading.Thread(target=compare_mutant_code, args=test_vector[i+j])
+            if i + j >= len(edge_cases):
+                break
+            t = threading.Thread(target=compare_mutant_code, args=test_cases[i+j])
             threads.append(t)
             t.start()
 
@@ -189,3 +198,5 @@ def parallel_test():
 
 generate_mutant_list()
 generate_mutated_code()
+sequential_test()
+parallel_test()
