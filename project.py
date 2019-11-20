@@ -2,6 +2,8 @@ import sys
 import threading
 import generate_test_vectors
 import numpy as np
+import importlib
+import sut
 
 sut_filename = 'sut.py'
 if(len(sys.argv) >= 2):
@@ -11,6 +13,8 @@ mutant_list_filename = 'mutant_list.txt'
 
 test_cases_filename = 'test_vectors.csv'
 
+list_of_mutant_files = []
+
 edge_cases = [" ", [2], [], "hello", "stuff", [], "&", "", [1], [10]]
 num_cases = 100
 test_cases = []
@@ -18,7 +22,13 @@ for i in range(num_cases):
     test_cases.append(generate_test_vectors.generate_vectors())
 
 def compare_mutant_code(num, test_vector = []):
-    return True
+    for file in list_of_mutant_files:
+        file = file.split('.')[0]
+        mutant_file = importlib.import_module(file)
+        correct_result = sut.standard_deviation(test_vector)
+        mutant_result = mutant_file.standard_deviation(test_vector)
+        print(str(correct_result) + " " + str(mutant_result))
+        return correct_result == mutant_result
 
 def generate_mutant_list():
     #open the software under test
@@ -31,7 +41,7 @@ def generate_mutant_list():
     mutation_counts = [0,0,0,0]
     symbols = ['+','-','*','/']
 
-    with open(mutant_list_filename, 'a+') as mutant_file:
+    with open(mutant_list_filename, 'w+') as mutant_file:
         #iterate over each line
         for i in range(len(sut)):
             line = sut[i]
@@ -108,8 +118,9 @@ def generate_mutated_code():
                 #we have a complete entry
                 output_filename = 'Mutation ' + str(mutant_number)
                 output_filename += '.' + sut_file_extension
+                list_of_mutant_files.append(output_filename)
 
-                with open(sut_filename) as sut, open(output_filename, 'a+') as output_file:
+                with open(sut_filename) as sut, open(output_filename, 'w+') as output_file:
                     if mutant_line_number != 0:
                         #write the lines that come before the mutant to the output file
                         header = [next(sut) for i in range(mutant_line_number)]
@@ -201,4 +212,4 @@ def parallel_test():
 generate_mutant_list()
 generate_mutated_code()
 sequential_test()
-parallel_test()
+#parallel_test()
