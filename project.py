@@ -1,6 +1,5 @@
 import sys
 import importlib
-from sut import standard_deviation
 import threading
 import generate_test_vectors
 import numpy as np
@@ -16,6 +15,7 @@ mutant_list_filename = 'mutant_list.txt'
 test_cases_filename = 'test_vectors.csv'
 
 list_of_mutant_files = []
+pooopooooopoooo
 
 edge_cases = [" ", [2], [], "hello", "stuff", [], "&", "", [1], [10]]
 num_cases = 100
@@ -155,17 +155,11 @@ def generate_mutated_code():
 def sequential_test():
     num_pass = 0
     for test in edge_cases:
-        try:
-            if not compare_mutant_code(0, test):
-                num_pass += 1
-        except:
-            pass
+        if compare_mutant_code(0, test):
+            num_pass += 1
     for test in test_cases:
-        try:
-            if not compare_mutant_code(0, test):
-                num_pass += 1
-        except:
-            pass
+        if compare_mutant_code(0, test):
+            num_pass += 1
     
     pass_pct = float(num_pass) / float(len(edge_cases) + len(test_cases)) * 100
     print(str(pass_pct) + " percent of mutants were killed.")
@@ -202,38 +196,54 @@ def parallel_test():
             threads.append(t)
             t.start()
 
-=======
         #wait for threads to finish
         for t in threads:
             t.join()
         i += j
 
-def compare_mutant_code(test_vector):
+def compare_mutant_code(num,test_vector):
+    mutant_was_killed = False
+    for file in list_of_mutant_files:
+        file = file.split('.')[0]
+        mutant_file = importlib.import_module(file)
+        try:
+            correct_result = sut.standard_deviation(test_vector)
+        except Exception as e1:
+            try:
+                mutant_result = mutant_file.standard_deviation(test_vector)
+            except Exception as e2:
+                print('double exception')
+                print(test_vector)
+                print()
+                #pass
+                #return (type(e1) is type(e2) and e1.args == e2.args)
+        else:
+            try:
+                mutant_result = mutant_file.standard_deviation(test_vector)
+            except:
+                if(num == 0):
+                    with open(mutant_list_filename, 'a+') as mutant_file:
+                        mutant_file.write(file + " was killed " '\n')
+                    mutant_was_killed = True
+            
+            if(abs(correct_result - mutant_result) > 0.0000001):
+                if(num == 0):
+                    with open(mutant_list_filename, 'a+') as mutant_file:
+                        mutant_file.write(file + " was killed " '\n')
+                mutant_was_killed = True
+            else:
+                print('equal')
+                print(correct_result)
+                print(mutant_result)
+                print(test_vector)
+                print(file)
+                print()
+    return mutant_was_killed
 
-	for file in list_of_mutant_files:
-		file = file.split(".")[0]
-		mutant_file = importlib.import_module(file)
-		try:
-			correct_result = standard_deviation(*args)
-		
-		except Exception as a1:
-			
-			try:
-				mutant_result = mutant_file.standard_deviation(*args)
-			
-			except Exception as a2:
-				type(a1) is type(a2) and a1.args == a2.args 
-		
-		else:	
-			mutant_result = mutant_file.standard_deviation(*args)
-			if correct_result == mutant_result:
-				return true 
-			else:
-				with open(mutant_list_filename) as mutant_file:
-					mutant_file.write(file + " was killed " '\n')
-			return false
 
 generate_mutant_list()
 generate_mutated_code()
-sequential_test()
-parallel_test()
+
+compare_mutant_code(0, [40, 31, 54, 75, 11, -9, 20, 53.73])
+#sequential_test()
+#parallel_test()
