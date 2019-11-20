@@ -1,6 +1,7 @@
 import sys
 import threading
 import generate_test_vectors
+import numpy as np
 
 sut_filename = 'sut.py'
 if(len(sys.argv) >= 2):
@@ -16,7 +17,7 @@ test_cases = []
 for i in range(num_cases):
     test_cases.append(generate_test_vectors.generate_vectors())
 
-def compare_mutant_code(args = []):
+def compare_mutant_code(num, test_vector = []):
     return True
 
 def generate_mutant_list():
@@ -150,10 +151,10 @@ def generate_mutated_code():
 def sequential_test():
     num_pass = 0
     for test in edge_cases:
-        if compare_mutant_code(args=test):
+        if compare_mutant_code(0, test):
             num_pass += 1
     for test in test_cases:
-        if compare_mutant_code(args=test):
+        if compare_mutant_code(0, test):
             num_pass += 1
     
     pass_pct = float(num_pass) / float(len(edge_cases) + len(test_cases)) * 100
@@ -169,7 +170,7 @@ def parallel_test():
         for j in range(num_threads):
             if i + j >= len(edge_cases):
                 break
-            t = threading.Thread(target=compare_mutant_code, args=edge_cases[i+j])
+            t = threading.Thread(target=compare_mutant_code, args = (0,), kwargs={"test_vector":edge_cases[i+j]})
             threads.append(t)
             t.start()
 
@@ -184,9 +185,10 @@ def parallel_test():
     while i < len(test_cases):
         #spawn thread with callback
         for j in range(num_threads):
-            if i + j >= len(edge_cases):
+            if i + j >= len(test_cases):
                 break
-            t = threading.Thread(target=compare_mutant_code, args=test_cases[i+j])
+            
+            t = threading.Thread(target=compare_mutant_code, args = (0,), kwargs={"test_vector":test_cases})
             threads.append(t)
             t.start()
 
