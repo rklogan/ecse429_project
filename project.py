@@ -1,5 +1,6 @@
 import sys
 import threading
+import generate_test_vectors
 
 sut_filename = 'sut.py'
 if(len(sys.argv) >= 2):
@@ -9,8 +10,8 @@ mutant_list_filename = 'mutant_list.txt'
 
 test_cases_filename = 'test_vectors.csv'
 
-edge_cases = []
-test_cases = []
+edge_cases = [" ", [2], [], "hello", "stuff", [], "&", "", [1], [10]]
+test_cases = generate_test_vectors.generate_vectors()
 def compare_mutant_code():
     pass
 
