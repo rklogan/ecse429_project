@@ -144,10 +144,16 @@ def generate_mutated_code():
                 lines_of_entry_parsed = 0
 
 def sequential_test():
+    num_pass = 0
     for test in edge_cases:
-        compare_mutant_code(args=test)
+        if compare_mutant_code(args=test):
+            num_pass += 1
     for test in test_cases:
-        compare_mutant_code(args=test)
+        if compare_mutant_code(args=test):
+            num_pass += 1
+    
+    pass_pct = float(num_pass) / float(len(edge_cases) + len(test_cases)) * 100
+    print(str(pass_pct) + "percent of mutants were killed.")
 
 def parallel_test():
     num_threads = 3
