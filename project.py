@@ -142,17 +142,31 @@ def generate_mutated_code():
                 lines_of_entry_parsed = 0
 
 
-def compare_mutant_code(*args):
+def compare_mutant_code(test_vector):
 
 	for file in list_of_mutant_files:
 		file = file.split(".")[0]
 		mutant_file = importlib.import_module(file)
-		correct_result = standard_deviation(*args)
-		mutant_result = mutant_file.standard_deviation(*args)
-		if correct_result == mutant_result:
-			return true 
-		else:
+		try:
+			correct_result = standard_deviation(*args)
+		
+		except Exception as a1:
+			
+			try:
+				mutant_result = mutant_file.standard_deviation(*args)
+			
+			except Exception as a2:
+				type(a1) is type(a2) and a1.args == a2.args 
+		
+		else:	
+			mutant_result = mutant_file.standard_deviation(*args)
+			if correct_result == mutant_result:
+				return true 
+			else:
+				with open(mutant_list_filename) as mutant_file:
+					mutant_file.write(file + " was killed " '\n')
 			return false
+
 	
 
 generate_mutant_list()
