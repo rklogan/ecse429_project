@@ -9,6 +9,11 @@ mutant_list_filename = 'mutant_list.txt'
 
 test_cases_filename = 'test_vectors.csv'
 
+edge_cases = []
+test_cases = []
+def compare_mutant_code():
+    pass
+
 def generate_mutant_list():
     #open the software under test
     sut = open(sut_filename).readlines()
@@ -136,6 +141,12 @@ def generate_mutated_code():
                 mutant = ""
                 mutation_type = ""
                 lines_of_entry_parsed = 0
+
+def sequential_test():
+    for test in edge_cases:
+        compare_mutant_code(args=test)
+    for test in test_cases:
+        compare_mutant_code(args=test)
 
 def parallel_test():
     num_threads = 3
