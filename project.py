@@ -5,6 +5,7 @@ import generate_test_vectors
 import numpy as np
 import importlib
 import sut
+import time
 
 #get CLAs
 sut_filename = 'sut.py'
@@ -37,6 +38,7 @@ def generate_mutant_list():
     mutant_number = 0 
     mutation_counts = [0,0,0,0]
     symbols = ['+','-','*','/']
+    in_multiline = False
 
     with open(mutant_list_filename, 'w+') as mutant_file:
         #iterate over each line
@@ -238,11 +240,18 @@ def parallel_test():
 
 generate_mutant_list()
 generate_mutated_code()
-#sequential_test()
-parallel_test()
+
+start = time.time()
+if num_threads == 1:
+    sequential_test()
+else:
+    parallel_test()
+elapsed = time.time() - start
 
 #calculate coverage
 coverage = float(len(dead_mutants)) / float(len(list_of_mutant_files)) * 100
 print(str(coverage) + '% Mutant Coverage')
+print("Executed in: " + str(elapsed) + 's')
 open(mutant_list_filename, 'a+').write(str(coverage) + '% Mutant Coverage')
+
             
