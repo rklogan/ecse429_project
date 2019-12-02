@@ -6,9 +6,12 @@ import numpy as np
 import importlib
 import sut
 import time
+import tokenize
+import io
 
 #get CLAs
 sut_filename = 'sut.py'
+sut_no_comment_filename = 'no_comment.py'
 num_threads = 3
 if(len(sys.argv) >= 2):
     num_threads = int(sys.argv[1])
@@ -26,6 +29,7 @@ num_cases = 100
 test_cases = []
 for i in range(num_cases):
     test_cases.append(generate_test_vectors.generate_vectors())
+
 
 #function that generate all the mutants of the sut
 def generate_mutant_list():
@@ -186,6 +190,36 @@ def attempt_to_kill(mutant, vector):
             return False
         return True
 
+#function to remove comments from sur
+def remove_comments(sut_filename='sut.py'):
+    #load the file into a string
+    string = ''
+    with open(sut_filename) as sut:
+        for line in sut:
+            string += line
+
+    #create a buffer
+    buf = io.StringIO(string)
+
+    output_tokens = []
+    
+    #tokenize and process
+    for token in tokenize.generate_tokens(buf.readline):
+        #remove single line comments
+        if token.type == tokenize.COMMENT:
+            continue
+        #skip multiline comments
+        elif token.type == tokenize.STRING:
+            if token.string[0:3] == "'''" or token.string[0:3] == '"""':
+                continue
+
+        output_tokens.append(token)
+
+    with open(sut_no_comment_filename, 'w+') as snc:
+        snc.write(tokenize.untokenize(output_tokens))
+
+    return sut_no_comment_filename
+
 #this functions tests all the test vectors on the given mutant
 def test_mutant(num, mutant_filename):
     mutant_name = mutant_filename.split('.')[0]
@@ -238,6 +272,7 @@ def parallel_test():
             k.join()
         i += num_threads
 
+sut_filename = remove_comments(sut_filename)
 generate_mutant_list()
 generate_mutated_code()
 
@@ -253,5 +288,3 @@ coverage = float(len(dead_mutants)) / float(len(list_of_mutant_files)) * 100
 print(str(coverage) + '% Mutant Coverage')
 print("Executed in: " + str(elapsed) + 's')
 open(mutant_list_filename, 'a+').write(str(coverage) + '% Mutant Coverage')
-
-            

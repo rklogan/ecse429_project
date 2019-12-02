@@ -1,4 +1,11 @@
 import math
+ 
+# Dummy code to test comment removal
+x = "#Notacomment"  #this is a comment
+#### Comment ###
+"""
+x = 'Commented out'
+"""
 
 #computes the mean average of a list
 def mean(numbers):
